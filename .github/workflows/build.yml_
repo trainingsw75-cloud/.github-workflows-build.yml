@@ -1,0 +1,89 @@
+name: Build Android APK
+
+on: 
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Debug - Check repository contents
+      run: |
+        echo "=== Current directory ==="
+        pwd
+        echo "=== All files in repository ==="
+        ls -la
+        echo "=== Checking buildozer.spec ==="
+        if [ -f "buildozer.spec" ]; then
+          echo "✅ buildozer.spec FOUND!"
+          cat buildozer.spec
+        else
+          echo "❌ buildozer.spec NOT FOUND!"
+          echo "Creating basic buildozer.spec..."
+        fi
+        
+    - name: Debug - Check main.py
+      run: |
+        if [ -f "main.py" ]; then
+          echo "✅ main.py FOUND!"
+          cat main.py
+        else
+          echo "❌ main.py NOT FOUND!"
+        fi
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          python3-pip \
+          openjdk-11-jdk \
+          zip \
+          unzip \
+          git \
+          autoconf \
+          libtool \
+          pkg-config \
+          zlib1g-dev \
+          libncurses5-dev \
+          libncursesw5-dev \
+          cmake \
+          ninja-build \
+          libffi-dev \
+          libssl-dev
+
+    - name: Install Buildozer and dependencies
+      run: |
+        pip install buildozer cython
+
+    - name: Initialize Buildozer if needed
+      run: |
+        if [ ! -f "buildozer.spec" ]; then
+          echo "Creating buildozer.spec..."
+          buildozer init
+        fi
+        echo "=== Final buildozer.spec ==="
+        cat buildozer.spec
+
+    - name: Build APK with Buildozer
+      run: |
+        buildozer -v android debug
+
+    - name: Upload APK artifact
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-apk
+        path: bin/*.apk
+        retention-days: 3
